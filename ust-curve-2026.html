@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>美國公債殖利率互動走勢圖 · 2026</title>
+<style>
+  :root{
+    --fg: var(--foreground, #1b1f24);
+    --mut: var(--muted-foreground, #6b7280);
+    --acc: var(--accent, #2f6feb);
+    --bd: var(--border, #d8dce2);
+    --card: var(--card, #ffffff);
+    --grid: color-mix(in srgb, var(--bd) 70%, transparent);
+  }
+  html.standalone{ --fg:#e7e9ee; --mut:#98a1ad; --acc:#7aa2ff; --bd:#2b313a; --card:#161a20; --grid:#2a3039; background:#0e1115; }
+  *{box-sizing:border-box}
+  body{margin:0;padding:2px 0 6px;color:var(--fg);
+       font-family:inherit,-apple-system,"Segoe UI","Noto Sans TC",sans-serif;
+       font-variant-numeric:tabular-nums}
+  .app{max-width:1100px}
+  header{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px 16px;margin-bottom:10px}
+  h1{margin:0;font-size:16.5px;font-weight:650;letter-spacing:.2px}
+  .src{font-size:11px;color:var(--mut);line-height:1.5}
+  .cards{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px}
+  .card{flex:1 1 128px;min-width:120px;border:1px solid var(--bd);border-radius:8px;
+        padding:7px 10px 8px;background:var(--card)}
+  .card .k{font-size:10.5px;color:var(--mut);letter-spacing:.2px;margin-bottom:3px}
+  .card .v{font-size:17px;font-weight:640;line-height:1.15}
+  .card .d{font-size:10.5px;color:var(--mut);margin-top:2px}
+  .up{color:#d9534f}.dn{color:#2f9e6f}
+  .bar{display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin-bottom:9px}
+  .grp{display:flex;border:1px solid var(--bd);border-radius:7px;overflow:hidden}
+  .grp button{border:0;background:transparent;color:var(--mut);font:inherit;font-size:11.5px;
+              padding:5px 10px;cursor:pointer;border-right:1px solid var(--bd)}
+  .grp button:last-child{border-right:0}
+  .grp button[aria-pressed="true"]{background:color-mix(in srgb,var(--acc) 16%,transparent);color:var(--fg);font-weight:600}
+  .grp button:hover{color:var(--fg)}
+  .lg{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
+  .lg button{display:inline-flex;align-items:center;gap:6px;font:inherit;font-size:11.5px;
+             background:transparent;border:1px solid var(--bd);border-radius:999px;
+             padding:4px 10px 4px 8px;color:var(--fg);cursor:pointer;opacity:1}
+  .lg button[aria-pressed="false"]{opacity:.42;text-decoration:line-through}
+  .chip{width:9px;height:9px;border-radius:50%;flex:0 0 auto}
+  .plot{position:relative;border:1px solid var(--bd);border-radius:9px;background:var(--card);
+        padding:6px 4px 2px;overflow:hidden}
+  canvas{display:block;width:100%;height:382px;cursor:crosshair}
+  .tip{position:absolute;pointer-events:none;display:none;z-index:5;
+       background:var(--card);border:1px solid var(--bd);border-radius:7px;
+       padding:6px 9px;font-size:11.5px;line-height:1.55;white-space:nowrap;
+       box-shadow:0 4px 16px rgba(0,0,0,.20)}
+  .tip .hd{color:var(--mut);margin-bottom:3px}
+  .tip .r{display:flex;justify-content:space-between;gap:14px}
+  .tip .r b{font-weight:640}
+  .hint{font-size:10.5px;color:var(--mut);margin:6px 2px 0;display:flex;justify-content:space-between}
+  table{width:100%;border-collapse:collapse;font-size:11.5px;margin-top:14px}
+  caption{text-align:left;font-size:11.5px;color:var(--mut);padding-bottom:5px}
+  th,td{padding:4px 8px;border-bottom:1px solid var(--grid);text-align:right}
+  th:first-child,td:first-child{text-align:left}
+  thead th{color:var(--mut);font-weight:600;border-bottom:1px solid var(--bd)}
+  tbody tr:hover{background:color-mix(in srgb,var(--acc) 8%,transparent)}
+  .note{font-size:10.5px;color:var(--mut);margin-top:10px;line-height:1.6}
+  .evk{display:inline-flex;align-items:center;gap:4px;margin-right:10px}
+  .evk i{width:8px;height:8px;display:inline-block;transform:rotate(45deg)}
+  .evk.cpi i{border-radius:0;background:#d98c3f;transform:none;clip-path:polygon(50% 0,100% 100%,0 100%)}
+  .evk.fed i{background:#8d6bd8}
+  .grp button .chip{margin-right:5px;width:8px;height:8px}
+  .note .evk.fed i{background:#8d6bd8}
+  .note .evk.jobs i{background:#2f9e9e;transform:rotate(0);border-radius:50%}
+  .note .evk.auction i{background:#8a8f98;transform:rotate(0);border-radius:1px}
+  .dl{margin-left:auto}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>美國公債殖利率走勢圖 · 2026 年</h1>
+    <div class="src" id="src"></div>
+  </header>
+
+  <div class="cards" id="cards"></div>
+
+  <div class="bar">
+    <div class="grp" id="modeGrp">
+      <button data-mode="yield" aria-pressed="true">殖利率</button>
+      <button data-mode="spread" aria-pressed="false">利差（30Y−10Y／30Y−2Y）</button>
+      <button data-mode="chg" aria-pressed="false">區間變動（bp）</button>
+    </div>
+    <div class="grp" id="rangeGrp">
+      <button data-days="22" aria-pressed="false">1M</button>
+      <button data-days="66" aria-pressed="false">3M</button>
+      <button data-days="132" aria-pressed="false">6M</button>
+      <button data-days="0" aria-pressed="true">今年</button>
+    </div>
+    <div class="grp" id="evGrp">
+      <button data-ev="fed" aria-pressed="true"><span class="chip" style="background:#8d6bd8"></span>FOMC</button>
+      <button data-ev="cpi" aria-pressed="true"><span class="chip" style="background:#d98c3f"></span>CPI</button>
+      <button data-ev="jobs" aria-pressed="true"><span class="chip" style="background:#2f9e9e"></span>非農</button>
+      <button data-ev="auction" aria-pressed="true"><span class="chip" style="background:#8a8f98"></span>10Y 標售</button>
+    </div>
+    <div class="lg" id="legend"></div>
+  </div>
+
+  <div class="plot" id="plot">
+    <canvas id="cv"></canvas>
+    <div class="tip" id="tip"></div>
+  </div>
+  <div class="hint"><span>滑鼠移到圖上顯示當日數值；拖曳可框選放大，雙擊回復。</span><span id="domain"></span></div>
+
+  <table id="tbl">
+    <caption>月末收盤殖利率（%）</caption>
+    <thead><tr><th>月份</th><th>30 年</th><th>10 年</th><th>2 年</th><th>30Y−10Y</th></tr></thead>
+    <tbody></tbody>
+  </table>
+
+  <div class="note">
+    資料來源：U.S. Department of the Treasury／Daily Treasury Par Yield Curve Rates（2026 年逐日收盤，最新至 <span id="lastday"></span>），
+    與 FRED <code>DGS30</code> 同源。單位：殖利率為 %，利差為百分點（1 bp = 0.01 個百分點）。<br>
+    註：官方收盤值與 CNBC／Tradeweb 盤中即時報價可能有數 bp 差異；最新盤中價仍以報價商為準。<br>
+    <span class="evk fed"><i></i>FOMC 決議</span><span class="evk cpi"><i></i>CPI 公布</span>
+    <span class="evk jobs"><i></i>非農就業</span><span class="evk auction"><i></i>10 年期標售</span>
+    事件來源：Federal Reserve FOMC 2026 會議日程（決議日為第二天）、BLS 2026 年各月公布日程（CPI／非農現均為 08:30 ET）、
+    TreasuryDirect 標售結果（10 年期含 9 年 11 個月、9 年 10 個月續發，括號內為得標利率）。
+    2026 年尚未發生：10/28 FOMC、11/10 CPI、12/9 FOMC、12/10 CPI。
+  </div>
+</div>
+
+<script>
+const DATA = {"hdr":["1 Mo","1.5 Month","2 Mo","3 Mo","4 Mo","6 Mo","1 Yr","2 Yr","3 Yr","5 Yr","7 Yr","10 Yr","20 Yr","30 Yr"],"rows":[["2026-01-02",3.72,3.71,3.66,3.65,3.62,3.58,3.47,3.47,3.55,3.74,3.95,4.19,4.81,4.86],["2026-01-05",3.71,3.68,3.64,3.64,3.61,3.57,3.47,3.46,3.53,3.71,3.92,4.17,4.79,4.85],["2026-01-06",3.7,3.7,3.61,3.63,3.58,3.56,3.48,3.47,3.54,3.72,3.93,4.18,4.8,4.86],["2026-01-07",3.7,3.69,3.6,3.62,3.6,3.56,3.48,3.47,3.53,3.7,3.91,4.15,4.76,4.82],["2026-01-08",3.7,3.69,3.63,3.62,3.6,3.56,3.48,3.49,3.56,3.74,3.95,4.19,4.79,4.85],["2026-01-09",3.7,3.68,3.63,3.62,3.62,3.57,3.52,3.54,3.59,3.75,3.95,4.18,4.76,4.82],["2026-01-12",3.71,3.68,3.64,3.67,3.63,3.58,3.53,3.54,3.59,3.77,3.97,4.19,4.78,4.83],["2026-01-13",3.72,3.72,3.66,3.67,3.63,3.59,3.51,3.53,3.57,3.75,3.95,4.18,4.77,4.83],["2026-01-14",3.72,3.71,3.66,3.67,3.65,3.58,3.5,3.51,3.56,3.72,3.92,4.15,4.73,4.79],["2026-01-15",3.75,3.73,3.69,3.68,3.66,3.6,3.54,3.56,3.62,3.77,3.96,4.17,4.74,4.79],["2026-01-16",3.75,3.72,3.68,3.67,3.66,3.6,3.55,3.59,3.67,3.82,4.02,4.24,4.79,4.83],["2026-01-20",3.75,3.71,3.69,3.7,3.65,3.61,3.53,3.6,3.68,3.86,4.08,4.3,4.87,4.91],["2026-01-21",3.75,3.71,3.7,3.7,3.67,3.62,3.53,3.6,3.66,3.83,4.04,4.26,4.82,4.87],["2026-01-22",3.79,3.71,3.72,3.71,3.67,3.61,3.53,3.61,3.68,3.85,4.05,4.26,4.79,4.84],["2026-01-23",3.78,3.71,3.72,3.7,3.67,3.61,3.53,3.6,3.67,3.84,4.03,4.24,4.78,4.82],["2026-01-26",3.77,3.71,3.7,3.67,3.67,3.62,3.52,3.56,3.66,3.82,4.02,4.22,4.75,4.8],["2026-01-27",3.77,3.72,3.7,3.67,3.66,3.61,3.5,3.53,3.65,3.81,4.03,4.24,4.79,4.83],["2026-01-28",3.76,3.72,3.71,3.68,3.7,3.63,3.52,3.56,3.66,3.83,4.05,4.26,4.81,4.85],["2026-01-29",3.72,3.73,3.75,3.67,3.69,3.62,3.5,3.53,3.63,3.8,4.01,4.24,4.8,4.85],["2026-01-30",3.72,3.73,3.75,3.67,3.69,3.61,3.48,3.52,3.6,3.79,4.01,4.26,4.82,4.87],["2026-02-02",3.72,3.72,3.74,3.69,3.7,3.62,3.49,3.57,3.64,3.83,4.05,4.29,4.85,4.9],["2026-02-03",3.72,3.72,3.74,3.69,3.7,3.62,3.49,3.57,3.64,3.83,4.04,4.28,4.85,4.9],["2026-02-04",3.72,3.72,3.74,3.69,3.7,3.62,3.49,3.57,3.64,3.83,4.05,4.29,4.86,4.91],["2026-02-05",3.72,3.71,3.74,3.67,3.68,3.58,3.44,3.47,3.55,3.74,3.97,4.21,4.79,4.85],["2026-02-06",3.72,3.72,3.74,3.68,3.7,3.59,3.45,3.5,3.57,3.76,3.98,4.22,4.8,4.85],["2026-02-09",3.72,3.72,3.73,3.69,3.7,3.59,3.43,3.48,3.56,3.75,3.97,4.22,4.79,4.85],["2026-02-10",3.72,3.72,3.74,3.69,3.69,3.58,3.4,3.45,3.5,3.7,3.92,4.16,4.73,4.78],["2026-02-11",3.71,3.71,3.73,3.7,3.7,3.6,3.47,3.52,3.55,3.75,3.96,4.18,4.76,4.82],["2026-02-12",3.72,3.71,3.74,3.7,3.7,3.58,3.45,3.47,3.49,3.67,3.87,4.09,4.68,4.72],["2026-02-13",3.72,3.71,3.73,3.68,3.7,3.59,3.42,3.4,3.43,3.61,3.81,4.04,4.64,4.69],["2026-02-17",3.72,3.75,3.73,3.69,3.7,3.59,3.48,3.43,3.47,3.63,3.82,4.05,4.63,4.68],["2026-02-18",3.71,3.74,3.73,3.7,3.7,3.6,3.49,3.47,3.5,3.66,3.86,4.09,4.65,4.71],["2026-02-19",3.72,3.74,3.75,3.69,3.7,3.6,3.5,3.47,3.5,3.65,3.85,4.08,4.64,4.7],["2026-02-20",3.72,3.73,3.74,3.69,3.71,3.61,3.51,3.48,3.5,3.65,3.85,4.08,4.66,4.72],["2026-02-23",3.72,3.74,3.74,3.69,3.7,3.62,3.5,3.43,3.45,3.59,3.79,4.03,4.63,4.7],["2026-02-24",3.72,3.75,3.73,3.69,3.7,3.62,3.52,3.43,3.47,3.61,3.81,4.04,4.63,4.7],["2026-02-25",3.71,3.74,3.73,3.69,3.68,3.62,3.53,3.45,3.49,3.61,3.82,4.05,4.63,4.7],["2026-02-26",3.74,3.74,3.75,3.68,3.68,3.61,3.52,3.42,3.46,3.57,3.78,4.02,4.6,4.67],["2026-02-27",3.74,3.73,3.73,3.67,3.67,3.6,3.48,3.38,3.39,3.51,3.72,3.97,4.57,4.64],["2026-03-02",3.74,3.74,3.74,3.72,3.68,3.68,3.54,3.47,3.49,3.62,3.82,4.05,4.64,4.7],["2026-03-03",3.75,3.75,3.74,3.71,3.67,3.68,3.55,3.51,3.5,3.63,3.83,4.06,4.65,4.7],["2026-03-04",3.75,3.75,3.75,3.71,3.68,3.68,3.58,3.54,3.55,3.67,3.87,4.09,4.67,4.72],["2026-03-05",3.75,3.74,3.72,3.7,3.68,3.68,3.59,3.57,3.59,3.72,3.92,4.13,4.71,4.74],["2026-03-06",3.75,3.74,3.72,3.69,3.67,3.66,3.55,3.56,3.59,3.72,3.93,4.15,4.74,4.77],["2026-03-09",3.75,3.73,3.72,3.71,3.68,3.68,3.56,3.56,3.58,3.71,3.9,4.12,4.7,4.72],["2026-03-10",3.75,3.74,3.71,3.71,3.69,3.68,3.56,3.57,3.58,3.73,3.93,4.15,4.74,4.78],["2026-03-11",3.75,3.73,3.7,3.71,3.69,3.68,3.6,3.64,3.64,3.79,3.98,4.21,4.82,4.86],["2026-03-12",3.76,3.74,3.72,3.72,3.69,3.7,3.66,3.76,3.75,3.88,4.06,4.27,4.86,4.88],["2026-03-13",3.75,3.74,3.71,3.72,3.69,3.7,3.66,3.73,3.74,3.87,4.07,4.28,4.89,4.9],["2026-03-16",3.75,3.73,3.72,3.72,3.69,3.72,3.64,3.68,3.69,3.8,4.0,4.23,4.83,4.86],["2026-03-17",3.74,3.72,3.72,3.72,3.69,3.71,3.63,3.68,3.68,3.79,3.98,4.2,4.81,4.85],["2026-03-18",3.73,3.72,3.72,3.73,3.71,3.74,3.68,3.76,3.76,3.87,4.05,4.26,4.84,4.88],["2026-03-19",3.73,3.71,3.72,3.73,3.71,3.76,3.73,3.79,3.79,3.88,4.06,4.25,4.82,4.83],["2026-03-20",3.73,3.71,3.72,3.74,3.73,3.79,3.8,3.88,3.9,4.01,4.2,4.39,4.97,4.96],["2026-03-23",3.73,3.71,3.72,3.74,3.72,3.77,3.76,3.83,3.85,3.95,4.15,4.34,4.93,4.91],["2026-03-24",3.74,3.72,3.72,3.74,3.73,3.78,3.81,3.9,3.93,4.03,4.21,4.39,4.95,4.94],["2026-03-25",3.73,3.72,3.72,3.73,3.72,3.76,3.77,3.84,3.88,3.96,4.15,4.33,4.9,4.89],["2026-03-26",3.74,3.73,3.73,3.73,3.73,3.77,3.83,3.96,4.0,4.08,4.25,4.42,4.96,4.93],["2026-03-27",3.74,3.73,3.72,3.73,3.72,3.75,3.77,3.88,3.94,4.06,4.25,4.44,4.99,4.98],["2026-03-30",3.74,3.72,3.71,3.71,3.71,3.73,3.71,3.82,3.85,3.97,4.16,4.35,4.92,4.91],["2026-03-31",3.74,3.73,3.72,3.7,3.7,3.72,3.68,3.79,3.81,3.92,4.11,4.3,4.88,4.88],["2026-04-01",3.74,3.72,3.71,3.7,3.7,3.72,3.68,3.81,3.84,3.97,4.15,4.33,4.91,4.91],["2026-04-02",3.72,3.72,3.73,3.7,3.71,3.72,3.68,3.79,3.82,3.94,4.12,4.31,4.88,4.88],["2026-04-03",3.71,3.73,3.73,3.71,3.71,3.73,3.72,3.84,3.88,3.99,4.17,4.35,4.91,4.91],["2026-04-06",3.72,3.72,3.74,3.72,3.72,3.74,3.72,3.84,3.88,3.98,4.16,4.34,4.89,4.89],["2026-04-07",3.68,3.7,3.72,3.71,3.71,3.73,3.68,3.81,3.82,3.95,4.13,4.33,4.9,4.9],["2026-04-08",3.67,3.69,3.71,3.69,3.69,3.73,3.69,3.79,3.78,3.92,4.1,4.29,4.87,4.89],["2026-04-09",3.66,3.67,3.69,3.68,3.68,3.71,3.68,3.78,3.77,3.91,4.1,4.29,4.88,4.9],["2026-04-10",3.67,3.69,3.7,3.69,3.69,3.72,3.7,3.81,3.8,3.94,4.12,4.31,4.89,4.91],["2026-04-13",3.69,3.71,3.71,3.71,3.7,3.74,3.7,3.78,3.79,3.92,4.1,4.3,4.88,4.9],["2026-04-14",3.71,3.72,3.72,3.71,3.7,3.73,3.71,3.76,3.76,3.87,4.06,4.26,4.84,4.87],["2026-04-15",3.72,3.72,3.74,3.71,3.71,3.72,3.7,3.76,3.79,3.9,4.08,4.29,4.87,4.89],["2026-04-16",3.69,3.7,3.73,3.7,3.7,3.71,3.69,3.78,3.8,3.91,4.1,4.32,4.9,4.93],["2026-04-17",3.69,3.7,3.73,3.7,3.69,3.69,3.64,3.71,3.72,3.84,4.04,4.26,4.85,4.88],["2026-04-20",3.69,3.7,3.72,3.71,3.7,3.72,3.65,3.72,3.73,3.86,4.04,4.26,4.85,4.88],["2026-04-21",3.67,3.72,3.71,3.69,3.7,3.73,3.69,3.78,3.8,3.91,4.09,4.3,4.87,4.89],["2026-04-22",3.68,3.71,3.7,3.69,3.69,3.72,3.69,3.79,3.81,3.91,4.1,4.3,4.87,4.9],["2026-04-23",3.69,3.72,3.72,3.69,3.7,3.72,3.7,3.83,3.84,3.96,4.13,4.34,4.9,4.92],["2026-04-24",3.69,3.72,3.71,3.69,3.69,3.71,3.67,3.78,3.8,3.92,4.1,4.31,4.88,4.91],["2026-04-27",3.7,3.72,3.72,3.68,3.7,3.72,3.69,3.78,3.83,3.94,4.14,4.35,4.92,4.94],["2026-04-28",3.68,3.7,3.72,3.68,3.69,3.72,3.71,3.84,3.86,3.97,4.16,4.36,4.92,4.94],["2026-04-29",3.68,3.7,3.72,3.68,3.77,3.73,3.75,3.92,3.94,4.05,4.23,4.42,4.97,4.98],["2026-04-30",3.72,3.71,3.71,3.68,3.76,3.71,3.72,3.88,3.91,4.02,4.2,4.4,4.97,4.98],["2026-05-01",3.71,3.71,3.7,3.68,3.76,3.71,3.73,3.88,3.91,4.02,4.2,4.39,4.96,4.97],["2026-05-04",3.71,3.7,3.7,3.7,3.76,3.76,3.78,3.95,3.98,4.08,4.26,4.45,5.01,5.02],["2026-05-05",3.7,3.7,3.7,3.69,3.75,3.75,3.77,3.93,3.97,4.08,4.25,4.43,4.98,4.98],["2026-05-06",3.7,3.7,3.69,3.69,3.75,3.74,3.73,3.87,3.89,3.99,4.17,4.36,4.92,4.94],["2026-05-07",3.72,3.7,3.69,3.69,3.75,3.74,3.76,3.92,3.94,4.04,4.22,4.41,4.96,4.97],["2026-05-08",3.71,3.7,3.68,3.69,3.75,3.74,3.75,3.9,3.92,4.02,4.19,4.38,4.93,4.95],["2026-05-11",3.71,3.7,3.69,3.7,3.77,3.77,3.79,3.95,3.96,4.07,4.24,4.42,4.97,4.98],["2026-05-12",3.71,3.72,3.69,3.7,3.77,3.77,3.8,4.0,4.01,4.12,4.29,4.46,5.02,5.03],["2026-05-13",3.71,3.71,3.7,3.69,3.76,3.77,3.79,3.98,4.0,4.12,4.28,4.46,5.03,5.03],["2026-05-14",3.72,3.71,3.7,3.69,3.76,3.76,3.79,4.0,4.04,4.13,4.29,4.47,5.01,5.02],["2026-05-15",3.71,3.7,3.69,3.69,3.76,3.77,3.82,4.09,4.14,4.26,4.43,4.59,5.14,5.12],["2026-05-18",3.69,3.68,3.68,3.68,3.76,3.77,3.81,4.07,4.14,4.27,4.43,4.61,5.14,5.14],["2026-05-19",3.66,3.66,3.66,3.67,3.75,3.77,3.83,4.13,4.2,4.32,4.5,4.67,5.19,5.18],["2026-05-20",3.65,3.65,3.65,3.65,3.74,3.75,3.79,4.04,4.11,4.22,4.39,4.57,5.1,5.11],["2026-05-21",3.72,3.68,3.69,3.68,3.76,3.78,3.83,4.08,4.13,4.25,4.41,4.57,5.09,5.1],["2026-05-22",3.72,3.69,3.69,3.68,3.78,3.79,3.86,4.13,4.18,4.27,4.41,4.56,5.06,5.07],["2026-05-26",3.72,3.7,3.69,3.68,3.78,3.8,3.82,4.01,4.1,4.19,4.33,4.5,5.03,5.03],["2026-05-27",3.72,3.7,3.69,3.68,3.77,3.79,3.8,4.0,4.09,4.17,4.32,4.48,5.01,5.01],["2026-05-28",3.72,3.71,3.71,3.69,3.78,3.79,3.8,3.99,4.07,4.15,4.29,4.45,4.98,4.98],["2026-05-29",3.72,3.71,3.71,3.69,3.78,3.78,3.79,3.98,4.06,4.13,4.27,4.45,4.98,4.99],["2026-06-01",3.72,3.71,3.73,3.78,3.8,3.79,3.83,4.05,4.09,4.18,4.32,4.47,4.99,4.99],["2026-06-02",3.72,3.71,3.73,3.77,3.79,3.78,3.82,4.05,4.09,4.17,4.31,4.46,4.97,4.97],["2026-06-03",3.71,3.71,3.72,3.78,3.77,3.78,3.84,4.08,4.14,4.21,4.34,4.49,5.0,4.99],["2026-06-04",3.71,3.7,3.7,3.78,3.76,3.78,3.82,4.05,4.1,4.18,4.32,4.47,4.98,4.97],["2026-06-05",3.71,3.71,3.71,3.78,3.78,3.81,3.88,4.17,4.22,4.29,4.41,4.55,5.03,5.01],["2026-06-08",3.7,3.7,3.71,3.8,3.79,3.83,3.85,4.15,4.21,4.29,4.42,4.56,5.05,5.03],["2026-06-09",3.69,3.69,3.71,3.79,3.79,3.82,3.9,4.13,4.16,4.26,4.39,4.53,5.02,5.01],["2026-06-10",3.69,3.7,3.72,3.79,3.8,3.82,3.9,4.13,4.17,4.27,4.4,4.55,5.04,5.03],["2026-06-11",3.69,3.69,3.7,3.78,3.79,3.81,3.85,4.05,4.09,4.18,4.31,4.45,4.96,4.95],["2026-06-12",3.69,3.7,3.7,3.78,3.79,3.82,3.86,4.09,4.12,4.21,4.34,4.48,4.98,4.97],["2026-06-15",3.69,3.7,3.71,3.79,3.79,3.81,3.84,4.07,4.1,4.18,4.32,4.47,4.97,4.97],["2026-06-16",3.67,3.69,3.71,3.79,3.79,3.81,3.84,4.05,4.08,4.16,4.28,4.43,4.92,4.93],["2026-06-17",3.68,3.7,3.74,3.83,3.85,3.91,3.98,4.2,4.23,4.27,4.37,4.49,4.95,4.93],["2026-06-18",3.69,3.69,3.74,3.83,3.85,3.92,4.0,4.19,4.19,4.23,4.34,4.46,4.91,4.9],["2026-06-22",3.66,3.71,3.77,3.85,3.89,3.98,4.04,4.24,4.25,4.29,4.39,4.51,4.97,4.95],["2026-06-23",3.65,3.71,3.76,3.85,3.89,3.96,4.01,4.16,4.22,4.27,4.38,4.5,4.96,4.94],["2026-06-24",3.66,3.71,3.76,3.85,3.9,3.95,3.99,4.11,4.15,4.17,4.28,4.41,4.87,4.86],["2026-06-25",3.7,3.71,3.75,3.84,3.9,3.95,3.96,4.09,4.13,4.15,4.26,4.4,4.87,4.86],["2026-06-26",3.7,3.7,3.75,3.83,3.89,3.94,3.94,4.07,4.09,4.12,4.23,4.38,4.87,4.87],["2026-06-29",3.71,3.71,3.76,3.87,3.92,4.0,3.97,4.1,4.1,4.14,4.24,4.38,4.86,4.86],["2026-06-30",3.7,3.74,3.77,3.87,3.92,4.01,3.98,4.14,4.15,4.19,4.3,4.44,4.93,4.91],["2026-07-01",3.67,3.71,3.72,3.85,3.95,4.0,4.0,4.17,4.19,4.24,4.35,4.48,4.97,4.97],["2026-07-02",3.7,3.73,3.81,3.82,3.91,3.98,3.96,4.14,4.16,4.23,4.35,4.49,4.99,4.98],["2026-07-06",3.69,3.75,3.81,3.87,3.93,3.98,3.95,4.13,4.14,4.21,4.33,4.48,4.99,4.99],["2026-07-07",3.69,3.74,3.82,3.86,3.94,3.99,4.06,4.19,4.18,4.27,4.4,4.55,5.05,5.05],["2026-07-08",3.67,3.74,3.82,3.87,3.94,3.99,4.06,4.21,4.21,4.31,4.43,4.56,5.07,5.06],["2026-07-09",3.72,3.72,3.79,3.83,3.91,3.96,4.02,4.16,4.18,4.27,4.4,4.54,5.06,5.05],["2026-07-10",3.71,3.74,3.81,3.85,3.94,3.99,4.06,4.21,4.22,4.3,4.42,4.56,5.08,5.06],["2026-07-13",3.73,3.76,3.82,3.89,3.97,4.03,4.12,4.26,4.3,4.37,4.48,4.62,5.11,5.1],["2026-07-14",3.73,3.75,3.82,3.84,3.91,3.95,4.02,4.18,4.23,4.31,4.44,4.58,5.09,5.08],["2026-07-15",3.73,3.76,3.82,3.83,3.89,3.93,3.97,4.13,4.18,4.26,4.39,4.55,5.07,5.08],["2026-07-16",3.76,3.75,3.81,3.84,3.9,3.94,3.99,4.16,4.2,4.28,4.41,4.57,5.09,5.09],["2026-07-17",3.73,3.75,3.8,3.85,3.91,3.96,4.01,4.18,4.21,4.28,4.4,4.55,5.07,5.06],["2026-07-20",3.72,3.76,3.81,3.86,3.93,4.0,4.03,4.21,4.25,4.33,4.45,4.6,5.12,5.11],["2026-07-21",3.75,3.81,3.81,3.87,3.96,4.02,4.08,4.26,4.31,4.37,4.5,4.63,5.14,5.13],["2026-07-22",3.76,3.82,3.82,3.89,4.0,4.05,4.11,4.31,4.34,4.41,4.53,4.67,5.17,5.15],["2026-07-23",3.82,3.9,3.95,3.95,4.04,4.09,4.15,4.37,4.4,4.46,4.58,4.71,5.2,5.17],["2026-07-24",3.8,3.88,3.95,3.96,4.04,4.08,4.14,4.33,4.36,4.43,4.55,4.69,5.18,5.16],["2026-07-27",3.8,3.89,3.95,3.96,4.05,4.1,4.14,4.31,4.35,4.4,4.52,4.65,5.15,5.12],["2026-07-28",3.76,3.86,3.9,3.9,4.02,4.07,4.09,4.26,4.31,4.35,4.47,4.61,5.11,5.09],["2026-07-29",3.73,3.8,3.83,3.83,3.91,3.97,4.04,4.22,4.29,4.37,4.51,4.67,5.21,5.2],["2026-07-30",3.79,3.8,3.84,3.82,3.92,3.98,4.04,4.23,4.3,4.38,4.52,4.68,5.22,5.21],["2026-07-31",3.78,3.8,3.85,3.83,3.92,3.98,4.08,4.28,4.34,4.45,4.59,4.75,5.28,5.27],["2026-08-03",3.79,3.82,3.87,3.91,3.94,4.02,4.07,4.25,4.32,4.4,4.54,4.7,5.23,5.23],["2026-08-04",3.78,3.8,3.85,3.89,3.91,4.0,4.04,4.2,4.25,4.33,4.47,4.63,5.18,5.18],["2026-08-05",3.77,3.79,3.84,3.89,3.91,3.98,4.03,4.18,4.24,4.33,4.47,4.63,5.18,5.17],["2026-08-06",3.8,3.8,3.84,3.9,3.92,3.99,4.06,4.25,4.31,4.4,4.53,4.69,5.22,5.22],["2026-08-07",3.79,3.79,3.83,3.87,3.89,3.96,4.01,4.19,4.25,4.35,4.49,4.65,5.2,5.19],["2026-08-10",3.79,3.8,3.84,3.89,3.91,4.0,4.04,4.25,4.31,4.41,4.56,4.72,5.25,5.25],["2026-08-11",3.79,3.82,3.83,3.89,3.9,3.99,4.03,4.22,4.27,4.39,4.54,4.7,5.25,5.24],["2026-08-12",3.78,3.79,3.8,3.87,3.89,3.97,4.0,4.2,4.25,4.38,4.52,4.68,5.24,5.24],["2026-08-13",3.79,3.79,3.81,3.87,3.88,3.94,3.97,4.15,4.2,4.32,4.47,4.63,5.2,5.21],["2026-08-14",3.79,3.8,3.81,3.86,3.88,3.95,3.98,4.17,4.24,4.36,4.51,4.68,5.25,5.25],["2026-08-17",3.79,3.8,3.82,3.87,3.89,3.95,4.0,4.19,4.25,4.38,4.54,4.72,5.3,5.31],["2026-08-18",3.78,3.78,3.82,3.86,3.88,3.94,3.99,4.19,4.26,4.37,4.53,4.71,5.28,5.28],["2026-08-19",3.77,3.77,3.81,3.86,3.88,3.94,4.0,4.19,4.25,4.35,4.48,4.65,5.17,5.19],["2026-08-20",3.8,3.77,3.79,3.87,3.88,3.94,3.99,4.19,4.26,4.39,4.53,4.69,5.2,5.23],["2026-08-21",3.8,3.77,3.8,3.88,3.9,3.95,4.03,4.24,4.31,4.43,4.57,4.74,5.25,5.27],["2026-08-24",3.79,3.78,3.8,3.87,3.9,3.96,4.04,4.24,4.31,4.41,4.55,4.7,5.21,5.23],["2026-08-25",3.79,3.78,3.8,3.86,3.89,3.95,4.01,4.17,4.25,4.35,4.48,4.64,5.16,5.17],["2026-08-26",3.8,3.78,3.8,3.85,3.88,3.94,4.02,4.19,4.29,4.37,4.51,4.66,5.17,5.18],["2026-08-27",3.81,3.79,3.81,3.84,3.88,3.94,4.04,4.2,4.3,4.38,4.52,4.67,5.18,5.19],["2026-08-28",3.84,3.83,3.86,3.9,3.94,4.02,4.15,4.34,4.41,4.48,4.59,4.73,5.21,5.22],["2026-08-31",3.85,3.86,3.88,3.91,3.96,3.99,4.16,4.34,4.4,4.49,4.62,4.75,5.24,5.25],["2026-09-01",3.85,3.88,3.89,3.92,3.97,4.0,4.18,4.39,4.46,4.55,4.66,4.79,5.27,5.27],["2026-09-02",3.83,3.87,3.89,3.92,4.02,4.0,4.16,4.39,4.45,4.54,4.66,4.79,5.27,5.27],["2026-09-03",3.83,3.82,3.91,3.89,3.99,3.95,4.11,4.34,4.41,4.52,4.63,4.77,5.25,5.25],["2026-09-04",3.79,3.83,3.9,3.91,4.0,3.98,4.13,4.37,4.45,4.54,4.65,4.78,5.25,5.24],["2026-09-08",3.81,3.88,3.91,3.94,4.02,4.0,4.15,4.39,4.44,4.57,4.68,4.8,5.26,5.25],["2026-09-09",3.81,3.88,3.93,3.95,4.06,4.01,4.17,4.43,4.49,4.61,4.71,4.83,5.28,5.28],["2026-09-10",3.91,3.93,4.01,4.0,4.11,4.07,4.28,4.56,4.63,4.75,4.84,4.95,5.39,5.37],["2026-09-11",3.93,3.99,4.05,4.07,4.15,4.12,4.35,4.63,4.69,4.78,4.87,4.96,5.38,5.35],["2026-09-14",3.94,4.0,4.06,4.11,4.18,4.18,4.37,4.65,4.73,4.8,4.88,4.97,5.37,5.34],["2026-09-15",3.93,4.0,4.06,4.11,4.19,4.17,4.39,4.67,4.76,4.83,4.91,5.0,5.4,5.36],["2026-09-16",3.96,4.0,4.07,4.14,4.24,4.22,4.45,4.74,4.82,4.86,4.94,5.01,5.39,5.35],["2026-09-17",3.97,3.98,4.09,4.12,4.23,4.2,4.4,4.67,4.75,4.78,4.86,4.94,5.32,5.29],["2026-09-18",3.97,3.98,4.1,4.14,4.24,4.24,4.44,4.76,4.83,4.86,4.93,5.01,5.38,5.34],["2026-09-21",3.96,4.02,4.1,4.17,4.26,4.27,4.45,4.76,4.82,4.83,4.89,4.96,5.33,5.29],["2026-09-22",3.97,4.04,4.09,4.16,4.26,4.26,4.43,4.71,4.81,4.83,4.89,4.96,5.33,5.29],["2026-09-23",3.99,4.07,4.1,4.19,4.3,4.31,4.49,4.85,4.97,4.99,5.05,5.11,5.45,5.4],["2026-09-24",4.01,4.1,4.18,4.24,4.33,4.34,4.51,4.87,4.99,5.03,5.1,5.18,5.53,5.47],["2026-09-25",4.04,4.14,4.2,4.24,4.32,4.33,4.5,4.81,4.94,4.98,5.06,5.17,5.54,5.49],["2026-09-28",4.04,4.14,4.2,4.28,4.33,4.41,4.59,4.92,5.01,5.06,5.15,5.24,5.6,5.56],["2026-09-29",4.04,4.14,4.18,4.25,4.3,4.36,4.58,4.89,4.98,5.06,5.16,5.26,5.64,5.59],["2026-09-30",4.02,4.13,4.16,4.2,4.29,4.33,4.54,4.88,5.0,5.09,5.19,5.29,5.68,5.64],["2026-10-01",4.06,4.1,4.13,4.17,4.26,4.27,4.44,4.78,4.91,5.01,5.12,5.24,5.64,5.61],["2026-10-02",4.04,4.09,4.11,4.19,4.26,4.27,4.46,4.83,4.96,5.06,5.17,5.28,5.67,5.63],["2026-10-05",4.05,4.1,4.13,4.22,4.27,4.3,4.47,4.84,4.97,5.06,5.19,5.31,5.7,5.66],["2026-10-06",4.06,4.12,4.13,4.21,4.26,4.28,4.46,4.79,4.88,5.03,5.15,5.27,5.68,5.64],["2026-10-07",4.07,4.13,4.14,4.22,4.28,4.28,4.42,4.77,4.87,5.03,5.15,5.28,5.71,5.67],["2026-10-08",4.14,4.14,4.13,4.23,4.29,4.3,4.44,4.75,4.85,4.99,5.11,5.22,5.64,5.6],["2026-10-09",4.13,4.13,4.13,4.25,4.29,4.32,4.47,4.8,4.89,5.02,5.13,5.24,5.65,5.6],["2026-10-13",4.1,4.15,4.15,4.26,4.32,4.34,4.48,4.79,4.9,5.0,5.11,5.21,5.6,5.56],["2026-10-14",4.11,4.15,4.15,4.28,4.36,4.37,4.53,4.82,4.92,5.0,5.09,5.19,5.57,5.52],["2026-10-15",4.17,4.15,4.19,4.28,4.35,4.35,4.49,4.77,4.85,4.91,5.0,5.1,5.48,5.43],["2026-10-16",4.12,4.14,4.17,4.26,4.32,4.34,4.46,4.74,4.82,4.89,4.98,5.09,5.47,5.43],["2026-10-19",4.11,4.14,4.17,4.27,4.34,4.37,4.5,4.77,4.85,4.94,5.04,5.15,5.53,5.48],["2026-10-20",4.1,4.13,4.17,4.26,4.34,4.36,4.51,4.79,4.86,4.94,5.02,5.12,5.47,5.42],["2026-10-21",4.09,4.12,4.16,4.25,4.34,4.35,4.52,4.81,4.89,4.95,5.03,5.13,5.47,5.42],["2026-10-22",4.11,4.1,4.16,4.22,4.29,4.29,4.41,4.65,4.72,4.78,4.86,4.96,5.32,5.29],["2026-10-23",4.11,4.11,4.16,4.22,4.3,4.3,4.44,4.69,4.75,4.82,4.89,5.0,5.37,5.33]]};
+const META = {"count":204,"firstDate":"2026-01-02","lastDate":"2026-10-23"};
+
+/* ---------- 主題：獨立開啟時套用暗色 fallback ---------- */
+if (!getComputedStyle(document.documentElement).getPropertyValue('--foreground').trim()) {
+  document.documentElement.classList.add('standalone');
+}
+const cssv = (n, fb) => (getComputedStyle(document.documentElement).getPropertyValue(n).trim() || fb);
+
+/* ---------- 資料整理 ---------- */
+const HDR = DATA.hdr;
+const iOf = name => HDR.indexOf(name);
+const IDX = { y30: iOf('30 Yr'), y20: iOf('20 Yr'), y10: iOf('10 Yr'), y5: iOf('5 Yr'), y2: iOf('2 Yr') };
+const ROWS = DATA.rows.map(r => ({ d: r[0], v: r.slice(1) }));      // v[0..] 對應 HDR
+const T = d => new Date(d + 'T00:00:00Z').getTime();
+const fmtDate = t => { const d = new Date(t); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate(); };
+const D0 = T(ROWS[0].d), D1 = T(ROWS[ROWS.length - 1].d);
+
+const SERIES_DEF = [
+  { key: 'y30', name: '30 年', color: cssv('--accent', '#2f6feb'), idx: IDX.y30, on: true },
+  { key: 'y20', name: '20 年', color: '#c9843a', idx: IDX.y20, on: false },
+  { key: 'y10', name: '10 年', color: '#7d8ce0', idx: IDX.y10, on: true },
+  { key: 'y5',  name: '5 年',  color: '#3f9d7a', idx: IDX.y5,  on: false },
+  { key: 'y2',  name: '2 年',  color: '#b8548f', idx: IDX.y2,  on: false }
+];
+const SPREAD_DEF = [
+  { key: 's3010', name: '30Y−10Y', color: cssv('--accent', '#2f6feb'), on: true,
+    f: r => r.v[IDX.y30] - r.v[IDX.y10] },
+  { key: 's302',  name: '30Y−2Y',  color: '#3f9d7a', on: true,
+    f: r => r.v[IDX.y30] - r.v[IDX.y2] }
+];
+
+/* ---------- 事件：FOMC 決議 / CPI / 非農就業 / 10 年期標售（2026） ---------- */
+const EV_TYPES = {
+  fed:     { name: 'FOMC 決議', color: '#8d6bd8', shape: 'diamond',  lane: 0 },
+  cpi:     { name: 'CPI 公布',  color: '#d98c3f', shape: 'triangle', lane: 1 },
+  jobs:    { name: '非農就業',  color: '#2f9e9e', shape: 'circle',   lane: 2 },
+  auction: { name: '10Y 標售',  color: '#8a8f98', shape: 'square',   lane: 3 }
+};
+const LANE_TOP = 12, LANE_GAP = 10;
+const AJ = [   // 10 年期標售：日期、得標利率（TreasuryDirect）
+  ['2026-01-12', 4.173], ['2026-02-11', 4.177], ['2026-03-11', 4.217], ['2026-04-08', 4.282],
+  ['2026-05-12', 4.468], ['2026-06-10', 4.538], ['2026-07-08', 4.580], ['2026-08-12', 4.683],
+  ['2026-09-09', 4.834], ['2026-10-07', 5.300]
+];
+const EVENTS = [
+  /* FOMC 決議（會議第二天；* 為含 SEP 季預測） */
+  { d: '2026-01-28', k: 'fed', n: 'FOMC 決議' },
+  { d: '2026-03-18', k: 'fed', n: 'FOMC 決議（含 SEP）' },
+  { d: '2026-04-29', k: 'fed', n: 'FOMC 決議' },
+  { d: '2026-06-17', k: 'fed', n: 'FOMC 決議（含 SEP）' },
+  { d: '2026-07-29', k: 'fed', n: 'FOMC 決議' },
+  { d: '2026-09-16', k: 'fed', n: 'FOMC 決議（含 SEP）' },
+  { d: '2026-10-28', k: 'fed', n: 'FOMC 決議' },
+  { d: '2026-12-09', k: 'fed', n: 'FOMC 決議（含 SEP）' },
+  /* CPI 公布（美東 08:30） */
+  { d: '2026-01-13', k: 'cpi', n: 'CPI 公布（12 月）' },
+  { d: '2026-02-13', k: 'cpi', n: 'CPI 公布（1 月）' },
+  { d: '2026-03-11', k: 'cpi', n: 'CPI 公布（2 月）' },
+  { d: '2026-04-10', k: 'cpi', n: 'CPI 公布（3 月）' },
+  { d: '2026-05-12', k: 'cpi', n: 'CPI 公布（4 月）' },
+  { d: '2026-06-10', k: 'cpi', n: 'CPI 公布（5 月）' },
+  { d: '2026-07-14', k: 'cpi', n: 'CPI 公布（6 月）' },
+  { d: '2026-08-12', k: 'cpi', n: 'CPI 公布（7 月）' },
+  { d: '2026-09-11', k: 'cpi', n: 'CPI 公布（8 月）' },
+  { d: '2026-10-14', k: 'cpi', n: 'CPI 公布（9 月）' },
+  { d: '2026-11-10', k: 'cpi', n: 'CPI 公布（10 月）' },
+  { d: '2026-12-10', k: 'cpi', n: 'CPI 公布（11 月）' },
+  /* 非農就業報告 Employment Situation（美東 08:30） */
+  { d: '2026-01-09', k: 'jobs', n: '非農就業（12 月）' },
+  { d: '2026-02-11', k: 'jobs', n: '非農就業（1 月）' },
+  { d: '2026-03-06', k: 'jobs', n: '非農就業（2 月）' },
+  { d: '2026-04-03', k: 'jobs', n: '非農就業（3 月）' },
+  { d: '2026-05-08', k: 'jobs', n: '非農就業（4 月）' },
+  { d: '2026-06-05', k: 'jobs', n: '非農就業（5 月）' },
+  { d: '2026-07-02', k: 'jobs', n: '非農就業（6 月）' },
+  { d: '2026-08-07', k: 'jobs', n: '非農就業（7 月）' },
+  { d: '2026-09-04', k: 'jobs', n: '非農就業（8 月）' },
+  { d: '2026-10-02', k: 'jobs', n: '非農就業（9 月）' },
+  /* 10 年期公債標售 */
+  ...AJ.map(([d, hy]) => ({ d: d, k: 'auction', n: '10 年期標售（得標 ' + hy.toFixed(2) + '%）' }))
+].map(e => ({ ...e, t: T(e.d) }));
+const evOn = k => !!state.evOn[k];
+const eventsIn = () => EVENTS.filter(e => evOn(e.k) && e.t >= state.dom[0] && e.t <= state.dom[1]);
+const laneY = k => LANE_TOP + EV_TYPES[k].lane * LANE_GAP;
+
+let state = { mode: 'yield', days: 0, dom: [D0, D1], hover: null, drag: null, hoverEv: null,
+              evOn: { fed: true, cpi: true, jobs: true, auction: true } };
+
+/* ---------- 取數 ---------- */
+function activeDefs() {
+  return state.mode === 'spread' ? SPREAD_DEF.filter(s => s.on) : SERIES_DEF.filter(s => s.on);
+}
+function valueOf(def, row) {
+  if (state.mode === 'spread') return def.f(row);
+  return row.v[def.idx];
+}
+function visibleRows() {
+  const [a, b] = state.dom;
+  return ROWS.filter(r => { const t = T(r.d); return t >= a && t <= b; });
+}
+function seriesPoints(def) {
+  const rs = visibleRows();
+  const base = rs.length ? valueOf(def, rs[0]) : 0;
+  return rs.map(r => {
+    let y = valueOf(def, r);
+    if (state.mode === 'chg') y = (y - base) * 100;      // bp（相對起點）
+    else if (state.mode === 'spread') y = y * 100;        // 百分點 → bp
+    return { t: T(r.d), y: y, raw: valueOf(def, r), row: r };
+  }).filter(p => Number.isFinite(p.y));
+}
+
+/* ---------- 色彩 / 小工具 ---------- */
+const isDark = () => document.documentElement.classList.contains('standalone');
+function niceStep(range, target) {
+  const raw = range / target;
+  const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const n = raw / mag;
+  return (n < 1.5 ? 1 : n < 3 ? 2 : n < 7 ? 5 : 10) * mag;
+}
+function fmtVal(v) {
+  if (state.mode === 'yield') return v.toFixed(2) + '%';
+  return (v > 0 ? '+' : '') + v.toFixed(0) + ' bp';
+}
+function ok(a, b) { return Number.isFinite(a) && Number.isFinite(b); }
+
+/* ---------- Canvas ---------- */
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+const plot = document.getElementById('plot');
+const tip = document.getElementById('tip');
+let VP = { l: 58, r: 92, t: 52, b: 32, W: 0, H: 0 };
+
+function resize() {
+  const r = cv.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  cv.width = Math.round(r.width * dpr);
+  cv.height = Math.round(r.height * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  VP.W = r.width; VP.H = r.height;
+  draw();
+}
+
+function scaleX(t) {
+  const [a, b] = state.dom;
+  return VP.l + (t - a) / Math.max(1, b - a) * (VP.W - VP.l - VP.r);
+}
+function scaleY(v, lo, hi) {
+  return VP.H - VP.b - (v - lo) / Math.max(1e-9, hi - lo) * (VP.H - VP.t - VP.b);
+}
+
+function draw() {
+  const defs = activeDefs();
+  const series = defs.map(d => ({ def: d, pts: seriesPoints(d) }));
+  const all = series.flatMap(s => s.pts.map(p => p.y));
+  ctx.clearRect(0, 0, VP.W, VP.H);
+
+  const fg = cssv('--fg', '#1b1f24'), mut = cssv('--mut', '#6b7280'), bd = cssv('--bd', '#d8dce2');
+  const font = '11px ' + (getComputedStyle(document.body).fontFamily || 'sans-serif');
+
+  if (!all.length) {
+    ctx.fillStyle = mut; ctx.font = font;
+    ctx.fillText('此區間無資料', VP.l, VP.H / 2);
+    return;
+  }
+
+  let lo = Math.min(...all), hi = Math.max(...all);
+  if (state.mode !== 'yield') { lo = Math.min(lo, 0); hi = Math.max(hi, 0); }
+  const pad = (hi - lo) * 0.14 || 0.1;
+  lo -= pad; hi += pad;
+
+  /* 水平格線 + y 標籤 */
+  const step = niceStep(hi - lo, 6);
+  const start = Math.ceil(lo / step) * step;
+  ctx.font = font; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+  for (let v = start; v <= hi + 1e-9; v += step) {
+    const y = scaleY(v, lo, hi);
+    ctx.strokeStyle = bd; ctx.globalAlpha = .45; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(VP.l, y); ctx.lineTo(VP.W - VP.r, y); ctx.stroke();
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = mut;
+    const lab = state.mode !== 'yield' ? (v > 0 ? '+' : '') + v.toFixed(0)
+                                      : v.toFixed(step < 0.1 ? 3 : 2);
+    ctx.fillText(lab, VP.l - 9, y);
+  }
+  if (state.mode !== 'yield') {
+    const y0 = scaleY(0, lo, hi);
+    ctx.strokeStyle = mut; ctx.globalAlpha = .8; ctx.setLineDash([4, 4]);
+    ctx.beginPath(); ctx.moveTo(VP.l, y0); ctx.lineTo(VP.W - VP.r, y0); ctx.stroke();
+    ctx.setLineDash([]); ctx.globalAlpha = 1;
+  }
+
+  /* x 軸標籤 */
+  const [a, b] = state.dom;
+  const daySpan = (b - a) / 864e5;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.fillStyle = mut;
+  if (daySpan > 120) {
+    const d = new Date(a); d.setUTCDate(1);
+    let cur = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1));
+    if (cur.getTime() < a) cur = new Date(Date.UTC(cur.getUTCFullYear(), cur.getUTCMonth() + 1, 1));
+    while (cur.getTime() <= b) {
+      const x = scaleX(cur.getTime());
+      if (x > VP.l + 12 && x < VP.W - VP.r - 12) {
+        ctx.fillText((cur.getUTCMonth() + 1) + '月', x, VP.H - VP.b + 8);
+        ctx.strokeStyle = bd; ctx.globalAlpha = .5;
+        ctx.beginPath(); ctx.moveTo(x, VP.H - VP.b); ctx.lineTo(x, VP.H - VP.b + 4); ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
+      cur = new Date(Date.UTC(cur.getUTCFullYear(), cur.getUTCMonth() + 1, 1));
+    }
+  } else {
+    const tickEvery = daySpan > 45 ? 14 : 7;
+    for (let t = a; t <= b; t += tickEvery * 864e5) {
+      const x = scaleX(t);
+      if (x < VP.l + 8 || x > VP.W - VP.r - 8) continue;
+      ctx.fillText(fmtDate(t), x, VP.H - VP.b + 8);
+    }
+  }
+
+  drawEventGuides();
+
+  /* 線 */
+  series.forEach(({ def, pts }) => {
+    if (!pts.length) return;
+    if (series.length === 1) {                       // 單線時加漸層面積
+      const g = ctx.createLinearGradient(0, VP.t, 0, VP.H - VP.b);
+      g.addColorStop(0, hexA(def.color, .22));
+      g.addColorStop(1, hexA(def.color, 0));
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.moveTo(scaleX(pts[0].t), VP.H - VP.b);
+      pts.forEach(p => ctx.lineTo(scaleX(p.t), scaleY(p.y, lo, hi)));
+      ctx.lineTo(scaleX(pts[pts.length - 1].t), VP.H - VP.b);
+      ctx.closePath(); ctx.fill();
+    }
+    ctx.strokeStyle = def.color; ctx.lineWidth = 2; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    ctx.beginPath();
+    pts.forEach((p, i) => {
+      const x = scaleX(p.t), y = scaleY(p.y, lo, hi);
+      i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+    });
+    ctx.stroke();
+
+    /* 末端點與數值標籤 */
+    const last = pts[pts.length - 1];
+    const lx = scaleX(last.t), ly = scaleY(last.y, lo, hi);
+    ctx.fillStyle = def.color;
+    ctx.beginPath(); ctx.arc(lx, ly, 3.2, 0, Math.PI * 2); ctx.fill();
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.font = '600 ' + font;
+    ctx.fillText(fmtVal(last.y), lx + 7, ly);
+  });
+  ctx.font = font;
+
+  /* 極值標記（僅單線） */
+  if (series.length === 1 && series[0].pts.length > 5) {
+    const pts = series[0].pts, def = series[0].def;
+    let mx = pts[0], mn = pts[0];
+    pts.forEach(p => { if (p.y > mx.y) mx = p; if (p.y < mn.y) mn = p; });
+    [[mx, '▲', -13], [mn, '▼', 15]].forEach(([p, mark, dy]) => {
+      const x = scaleX(p.t), y = scaleY(p.y, lo, hi);
+      ctx.fillStyle = def.color;
+      ctx.beginPath(); ctx.arc(x, y, 3.6, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = def.color; ctx.lineWidth = 1; ctx.globalAlpha = .5;
+      ctx.beginPath(); ctx.arc(x, y, 7, 0, Math.PI * 2); ctx.stroke();
+      ctx.globalAlpha = 1;
+      ctx.textAlign = x < VP.l + 70 ? 'left' : x > VP.W - VP.r - 60 ? 'right' : 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = '600 ' + font;
+      ctx.fillStyle = def.color;
+      ctx.fillText(mark + ' ' + fmtVal(p.y), x, y + dy);
+      ctx.font = font;
+    });
+  }
+
+  drawEventRail();
+
+  /* 框選中 */
+  if (state.drag) {
+    const x1 = Math.min(state.drag.x0, state.drag.x1), x2 = Math.max(state.drag.x0, state.drag.x1);
+    ctx.fillStyle = hexA(cssv('--acc', '#2f6feb'), .16);
+    ctx.fillRect(x1, VP.t, x2 - x1, VP.H - VP.b - VP.t);
+    ctx.strokeStyle = hexA(cssv('--acc', '#2f6feb'), .7);
+    ctx.strokeRect(x1 + .5, VP.t + .5, x2 - x1, VP.H - VP.b - VP.t);
+  }
+
+  /* 十字線 */
+  if (state.hover) drawCrosshair(lo, hi, series);
+  window.__vp = { lo, hi };
+}
+
+function markerAt(kind, x, y, s) {
+  const shape = EV_TYPES[kind].shape;
+  ctx.beginPath();
+  if (shape === 'diamond') {
+    ctx.moveTo(x, y - s); ctx.lineTo(x + s, y); ctx.lineTo(x, y + s); ctx.lineTo(x - s, y);
+  } else if (shape === 'triangle') {
+    ctx.moveTo(x, y - s * 1.1); ctx.lineTo(x + s * 0.95, y + s * 0.8); ctx.lineTo(x - s * 0.95, y + s * 0.8);
+  } else if (shape === 'circle') {
+    ctx.arc(x, y, s * 0.86, 0, Math.PI * 2);
+  } else {
+    ctx.rect(x - s * 0.8, y - s * 0.8, s * 1.6, s * 1.6);
+  }
+  ctx.closePath(); ctx.fill();
+}
+
+/* 只有被鎖定的那個事件才畫垂直導線，避免數十條虛線變成雜訊 */
+function drawEventGuides() {
+  const e = state.hoverEv;
+  if (!e) return;
+  const x = scaleX(e.t), ys = laneY(e.k) + 5, ye = VP.H - VP.b;
+  ctx.strokeStyle = EV_TYPES[e.k].color;
+  ctx.globalAlpha = .55; ctx.lineWidth = 1.4; ctx.setLineDash([4, 3]);
+  ctx.beginPath(); ctx.moveTo(x, ys); ctx.lineTo(x, ye); ctx.stroke();
+  ctx.setLineDash([]); ctx.globalAlpha = 1;
+}
+
+function drawEventRail() {
+  const bd = cssv('--bd', '#d8dce2');
+  ['fed', 'cpi', 'jobs', 'auction'].forEach(k => {
+    if (!evOn(k)) return;
+    const evs = eventsIn().filter(e => e.k === k);
+    if (!evs.length) return;
+    const y = laneY(k);
+    /* 淡色軌道線 */
+    ctx.strokeStyle = bd; ctx.globalAlpha = .35; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(VP.l, y); ctx.lineTo(VP.W - VP.r, y); ctx.stroke();
+    ctx.globalAlpha = 1;
+    /* 標記 */
+    evs.forEach(e => {
+      const x = scaleX(e.t), hot = state.hoverEv === e;
+      ctx.fillStyle = EV_TYPES[k].color;
+      if (hot) {
+        ctx.globalAlpha = .20;
+        ctx.beginPath(); ctx.arc(x, y, 8.5, 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+      markerAt(k, x, y, hot ? 5.2 : 4.0);
+    });
+  });
+}
+
+function nearestEvent(x, y) {
+  let best = null, bd = 1e9;
+  eventsIn().forEach(e => {
+    const dx = Math.abs(scaleX(e.t) - x);
+    if (dx > 10) return;
+    const dy = Math.abs(laneY(e.k) - (y == null ? laneY(e.k) : y));
+    const d = Math.hypot(dx, dy);
+    if (d < bd) { bd = d; best = e; }
+  });
+  return best;
+}
+
+function drawCrosshair(lo, hi, series) {
+  const h = state.hover;
+  const row = nearestRow(h.t);
+  if (!row) return;
+  const x = scaleX(T(row.d));
+  const mut = cssv('--mut', '#6b7280');
+  ctx.strokeStyle = mut; ctx.globalAlpha = .55; ctx.lineWidth = 1; ctx.setLineDash([3, 3]);
+  ctx.beginPath(); ctx.moveTo(x, VP.t); ctx.lineTo(x, VP.H - VP.b); ctx.stroke();
+  ctx.setLineDash([]); ctx.globalAlpha = 1;
+  series.forEach(({ def, pts }) => {
+    const p = pts.find(q => q.row === row);
+    if (!p) return;
+    const y = scaleY(p.y, lo, hi);
+    ctx.fillStyle = def.color;
+    ctx.beginPath(); ctx.arc(x, y, 3.6, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = cssv('--card', '#fff'); ctx.lineWidth = 1.2; ctx.stroke();
+  });
+  /* tooltip */
+  tip.textContent = '';
+  const hd = document.createElement('div');
+  hd.className = 'hd';
+  const dt = new Date(row.d + 'T00:00:00Z');
+  hd.textContent = dt.getUTCFullYear() + '/' + (dt.getUTCMonth() + 1) + '/' + dt.getUTCDate();
+  tip.appendChild(hd);
+  series.forEach(({ def, pts }) => {
+    const p = pts.find(q => q.row === row);
+    if (!p) return;
+    const line = document.createElement('div');
+    line.className = 'r';
+    const l = document.createElement('span');
+    const dot = document.createElement('span');
+    dot.className = 'chip';
+    dot.style.background = def.color;
+    dot.style.display = 'inline-block';
+    dot.style.marginRight = '5px';
+    l.appendChild(dot);
+    l.appendChild(document.createTextNode(def.name));
+    const b = document.createElement('b');
+    b.textContent = fmtVal(p.y);
+    line.appendChild(l); line.appendChild(b);
+    tip.appendChild(line);
+  });
+  {
+    EVENTS.filter(e => evOn(e.k) && Math.abs(e.t - T(row.d)) <= 864e5 * 1.5).forEach(e => {
+      const line = document.createElement('div');
+      line.className = 'r';
+      const l = document.createElement('span');
+      const chip = document.createElement('span');
+      chip.className = 'chip';
+      chip.style.background = EV_TYPES[e.k].color;
+      chip.style.borderRadius = EV_TYPES[e.k].shape === 'circle' ? '50%' : '2px';
+      if (EV_TYPES[e.k].shape === 'diamond') chip.style.transform = 'rotate(45deg) scale(.85)';
+      chip.style.marginRight = '5px';
+      chip.style.display = 'inline-block';
+      l.appendChild(chip);
+      l.appendChild(document.createTextNode(e.n));
+      line.appendChild(l);
+      tip.appendChild(line);
+    });
+  }
+  tip.style.display = 'block';
+  const pr = plot.getBoundingClientRect();
+  const sx = pr.width / VP.W;
+  let left = x * sx + 14;
+  if (left + tip.offsetWidth > pr.width - 6) left = x * sx - tip.offsetWidth - 14;
+  tip.style.left = Math.max(4, left) + 'px';
+  tip.style.top = Math.max(4, VP.t * sx + 6) + 'px';
+}
+
+function hexA(hex, a) {
+  const h = hex.replace('#', '');
+  const s = h.length === 3 ? h.split('').map(c => c + c).join('') : h;
+  const n = parseInt(s.slice(0, 6), 16);
+  return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')';
+}
+function nearestRow(t) {
+  const rs = visibleRows();
+  if (!rs.length) return null;
+  let best = rs[0], bd = 1e18;
+  rs.forEach(r => { const d = Math.abs(T(r.d) - t); if (d < bd) { bd = d; best = r; } });
+  return best;
+}
+function xToTime(x) {
+  const [a, b] = state.dom;
+  return a + (x - VP.l) / Math.max(1, VP.W - VP.l - VP.r) * (b - a);
+}
+
+/* ---------- 互動 ---------- */
+cv.addEventListener('pointermove', e => {
+  const r = cv.getBoundingClientRect();
+  const x = e.clientX - r.left, y = e.clientY - r.top;
+  if (state.drag) {
+    state.drag.x1 = x;
+    draw();
+    return;
+  }
+  /* 事件軌道：靠近標記時鎖定該事件當日 */
+  if (y <= VP.t - 2 && x >= VP.l - 4 && x <= VP.W - VP.r + 4) {
+    const ev = nearestEvent(x, y);
+    state.hoverEv = ev;
+    if (ev) { state.hover = { t: ev.t }; draw(); return; }
+    state.hover = null; tip.style.display = 'none'; draw(); return;
+  }
+  state.hoverEv = null;
+
+  if (x < VP.l - 2 || x > VP.W - VP.r + 2 || y < VP.t || y > VP.H - VP.b + 4) {
+    if (state.hover) { state.hover = null; tip.style.display = 'none'; draw(); }
+    return;
+  }
+  state.hover = { t: xToTime(x) };
+  draw();
+});
+cv.addEventListener('pointerleave', () => {
+  if (state.drag) return;
+  state.hover = null; tip.style.display = 'none'; draw();
+});
+cv.addEventListener('pointerdown', e => {
+  const r = cv.getBoundingClientRect();
+  state.drag = { x0: e.clientX - r.left, x1: e.clientX - r.left };
+  cv.setPointerCapture(e.pointerId);
+});
+cv.addEventListener('pointerup', e => {
+  if (!state.drag) return;
+  const r = cv.getBoundingClientRect();
+  const x0 = Math.min(state.drag.x0, state.drag.x1), x1 = Math.max(state.drag.x0, state.drag.x1);
+  state.drag = null;
+  if (x1 - x0 > 12) {
+    let a = Math.max(D0, xToTime(x0)), b = Math.min(D1, xToTime(x1));
+    if (b - a > 3 * 864e5) { state.dom = [a, b]; syncDomainLabel(); draw(); }
+  } else {
+    draw();
+  }
+});
+cv.addEventListener('dblclick', () => { applyRange(state.days); });
+
+/* ---------- UI ---------- */
+function buildLegend() {
+  const box = document.getElementById('legend');
+  box.textContent = '';
+  if (state.mode === 'spread') {
+    SPREAD_DEF.forEach(def => box.appendChild(legendBtn(def, SPREAD_DEF)));
+  } else {
+    SERIES_DEF.forEach(def => box.appendChild(legendBtn(def, SERIES_DEF)));
+  }
+}
+function legendBtn(def, arr) {
+  const b = document.createElement('button');
+  b.setAttribute('aria-pressed', String(def.on));
+  b.dataset.key = def.key;
+  const c = document.createElement('span');
+  c.className = 'chip'; c.style.background = def.color;
+  b.appendChild(c);
+  b.appendChild(document.createTextNode(def.name));
+  b.addEventListener('click', () => {
+    const on = arr.filter(x => x.on).length;
+    if (def.on && on === 1) return;                 // 至少留一條線
+    def.on = !def.on;
+    b.setAttribute('aria-pressed', String(def.on));
+    draw();
+  });
+  return b;
+}
+
+function applyRange(days) {
+  state.days = days;
+  state.dom = days ? [Math.max(D0, D1 - days * 864e5), D1] : [D0, D1];
+  document.querySelectorAll('#rangeGrp button').forEach(btn =>
+    btn.setAttribute('aria-pressed', String(Number(btn.dataset.days) === days)));
+  syncDomainLabel();
+  draw();
+}
+function syncDomainLabel() {
+  const [a, b] = state.dom;
+  const d = t => { const x = new Date(t); return x.getUTCFullYear() + '/' + (x.getUTCMonth() + 1) + '/' + x.getUTCDate(); };
+  document.getElementById('domain').textContent = d(a) + ' – ' + d(b);
+}
+
+function buildCards() {
+  const last = ROWS[ROWS.length - 1], prev = ROWS[ROWS.length - 2], first = ROWS[0];
+  const y30 = last.v[IDX.y30], y10 = last.v[IDX.y10], y2 = last.v[IDX.y2];
+  const d1 = (y30 - prev.v[IDX.y30]) * 100, ytd = (y30 - first.v[IDX.y30]) * 100;
+  const all30 = ROWS.map(r => r.v[IDX.y30]);
+  const mx = Math.max(...all30), mn = Math.min(...all30);
+  const mxRow = ROWS.find(r => r.v[IDX.y30] === mx), mnRow = ROWS.find(r => r.v[IDX.y30] === mn);
+  const cls = v => v >= 0 ? 'up' : 'dn';
+  const sgn = v => (v >= 0 ? '+' : '') + v.toFixed(1) + ' bp';
+  const items = [
+    ['30 年殖利率（收盤）', y30.toFixed(2) + '%', META.lastDate + '　日變動 ' + sgn(d1), cls(d1)],
+    ['年初至今', sgn(ytd), '起點 ' + first.v[IDX.y30].toFixed(2) + '%（' + META.firstDate + '）', cls(ytd)],
+    ['年內高／低', mx.toFixed(2) + '% / ' + mn.toFixed(2) + '%', (mxRow ? mxRow.d.slice(5) : '') + ' / ' + (mnRow ? mnRow.d.slice(5) : ''), ''],
+    ['30Y−10Y 利差', ((y30 - y10) * 100).toFixed(1) + ' bp', '10 年 ' + y10.toFixed(2) + '%　2 年 ' + y2.toFixed(2) + '%', '']
+  ];
+  const box = document.getElementById('cards');
+  items.forEach(([k, v, d, c]) => {
+    const el = document.createElement('div');
+    el.className = 'card';
+    const k1 = document.createElement('div'); k1.className = 'k'; k1.textContent = k;
+    const v1 = document.createElement('div'); v1.className = 'v ' + c; v1.textContent = v;
+    const d1e = document.createElement('div'); d1e.className = 'd'; d1e.textContent = d;
+    el.append(k1, v1, d1e);
+    box.appendChild(el);
+  });
+  document.getElementById('lastday').textContent = META.lastDate;
+  document.getElementById('src').textContent = META.count + ' 個交易日 · ' + META.firstDate + ' → ' + META.lastDate +
+    '　｜　U.S. Treasury Daily Par Yield Curve';
+}
+
+function buildTable() {
+  const tb = document.querySelector('#tbl tbody');
+  const byMonth = new Map();
+  ROWS.forEach(r => byMonth.set(r.d.slice(0, 7), r));         // 每月最後一筆
+  [...byMonth.entries()].forEach(([ym, r]) => {
+    const tr = document.createElement('tr');
+    const sp = (r.v[IDX.y30] - r.v[IDX.y10]) * 100;
+    [ym.replace('-', '/'), r.v[IDX.y30].toFixed(2), r.v[IDX.y10].toFixed(2), r.v[IDX.y2].toFixed(2),
+     sp.toFixed(1)].forEach(txt => {
+      const td = document.createElement('td');
+      td.textContent = txt;
+      tr.appendChild(td);
+    });
+    tb.appendChild(tr);
+  });
+}
+
+document.querySelectorAll('#modeGrp button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    state.mode = btn.dataset.mode;
+    document.querySelectorAll('#modeGrp button').forEach(b =>
+      b.setAttribute('aria-pressed', String(b === btn)));
+    buildLegend();
+    draw();
+  });
+});
+document.querySelectorAll('#evGrp button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const k = btn.dataset.ev;
+    state.evOn[k] = !state.evOn[k];
+    btn.setAttribute('aria-pressed', String(state.evOn[k]));
+    if (state.hoverEv && !evOn(state.hoverEv.k)) state.hoverEv = null;
+    draw();
+  });
+});
+document.querySelectorAll('#rangeGrp button').forEach(btn => {
+  btn.addEventListener('click', () => applyRange(Number(btn.dataset.days)));
+});
+
+window.addEventListener('resize', () => resize());
+if (window.ResizeObserver) new ResizeObserver(() => resize()).observe(plot);
+
+buildCards();
+buildLegend();
+buildTable();
+applyRange(0);
+resize();
+</script>
+</body>
+</html>

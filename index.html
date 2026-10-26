@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>投資分析圖表集</title>
+<style>
+  :root{
+    --fg: var(--foreground, #1b1f24);
+    --mut: var(--muted-foreground, #6b7280);
+    --acc: var(--accent, #2f6feb);
+    --bd: var(--border, #d8dce2);
+    --card: var(--card, #ffffff);
+  }
+  html.standalone{ --fg:#e7e9ee; --mut:#98a1ad; --acc:#7aa2ff; --bd:#2b313a; --card:#161a20; background:#0e1115; }
+  *{box-sizing:border-box}
+  body{margin:0;padding:28px 20px 48px;color:var(--fg);font-family:inherit,-apple-system,"Segoe UI","Noto Sans TC",sans-serif;font-variant-numeric:tabular-nums}
+  .wrap{max-width:900px;margin:0 auto}
+  h1{margin:0 0 6px;font-size:22px;font-weight:680;letter-spacing:.2px}
+  .sub{font-size:12.5px;color:var(--mut);line-height:1.7;margin-bottom:26px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+  a.card{display:block;text-decoration:none;color:inherit;border:1px solid var(--bd);border-radius:11px;padding:16px 18px 18px;background:var(--card);transition:transform .12s ease,border-color .12s ease}
+  a.card:hover{transform:translateY(-2px);border-color:var(--acc)}
+  .card h2{margin:0 0 6px;font-size:15.5px;font-weight:650}
+  .card p{margin:0 0 10px;font-size:12.5px;color:var(--mut);line-height:1.65}
+  .tags{display:flex;gap:6px;flex-wrap:wrap}
+  .tag{font-size:10.5px;color:var(--mut);border:1px solid var(--bd);border-radius:999px;padding:2px 8px}
+  .go{font-size:12px;color:var(--acc);font-weight:600}
+  footer{margin-top:26px;font-size:11px;color:var(--mut);line-height:1.8}
+  footer a{color:var(--acc);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>投資分析圖表集</h1>
+  <div class="sub">
+    兩份以官方／公開資料建置的互動分析頁。所有數字皆可追溯來源與口徑，圖表為單檔離線 HTML（無 CDN、無追蹤）。
+  </div>
+
+  <div class="grid">
+    <a class="card" href="ust-curve-2026.html">
+      <h2>美國公債殖利率走勢 · 2026</h2>
+      <p>美國財政部 Daily Par Yield Curve 逐日資料（14 個期限）。可切換 30Y／20Y／10Y／5Y／2Y、利差與區間變動，並標註 FOMC 決議、CPI、非農就業、10 年期標售事件。</p>
+      <div class="tags">
+        <span class="tag">殖利率曲線</span><span class="tag">利差 bp</span><span class="tag">事件標記</span><span class="tag">框選放大</span>
+      </div>
+      <div style="margin-top:10px"><span class="go">開啟圖表 →</span></div>
+    </a>
+
+    <a class="card" href="ls-vs-dca-lab.html">
+      <h2>一次投入 vs 定期定額 · 起點敏感度實驗室</h2>
+      <p>9 個標的（^GSPC、^NDX、SPY、0050、^TWII、RSP、SCHD、VNQ、SPMO）逐月起點回測：LS 與 DCA 的期末值、IRR、勝率與「滾動起點」分布，用來檢驗單一路徑回測的偏誤。</p>
+      <div class="tags">
+        <span class="tag">LS vs DCA</span><span class="tag">IRR 年化</span><span class="tag">滾動起點</span><span class="tag">偏誤檢查</span>
+      </div>
+      <div style="margin-top:10px"><span class="go">開啟實驗室 →</span></div>
+    </a>
+  </div>
+
+  <footer>
+    資料來源：U.S. Department of the Treasury（殖利率）、Federal Reserve（FOMC 日程）、BLS（CPI／非農公布日程）、TreasuryDirect（標售結果）、Yahoo Finance（月線收盤）。<br>
+    所有頁面為價格報酬口徑，不含股息、稅費與匯率；僅供研究與教學，不構成投資建議。<br>
+    原始碼：<a href="https://github.com/shihchihpin/market-charts">github.com/shihchihpin/market-charts</a>
+  </footer>
+</div>
+<script>
+if (!getComputedStyle(document.documentElement).getPropertyValue('--foreground').trim()) {
+  document.documentElement.classList.add('standalone');
+}
+</script>
+</body>
+</html>
